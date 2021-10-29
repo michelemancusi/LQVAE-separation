@@ -136,4 +136,5 @@ logs/
 *runs/
 script/results
 script/data
+script/checkpoints
 .idea/

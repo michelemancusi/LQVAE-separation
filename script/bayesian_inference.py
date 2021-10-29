@@ -18,7 +18,6 @@ from jukebox.utils.dist_utils import setup_dist_from_mpi
 from jukebox.utils.logger import def_tqdm
 from tqdm import tqdm
 import numpy as np
-import csv
 
 
 def sample_level(vqvae, priors, m, n_samples, n_ctx, hop_length, sample_tokens, sigma=0.01, context=8, fp16=False, temp=1.0,
@@ -104,7 +103,7 @@ def primed_sample(x_0, x_1, vqvae, priors, m, n_samples, sample_tokens, sigma, c
 
 
     if latent_loss:
-        codebook = torch.load('codebook_precalc_22050_latent.pt')
+        codebook = torch.load('checkpoints/codebook_precalc_22050_latent.pt')
         codebook = codebook.to(device)  # shape (2048 x 2048)
         M = vqvae.bottleneck.one_level_decode(codebook.reshape(2048, 2048)).permute(0, 2, 1) # (2048,2048,64)
     else:
@@ -282,7 +281,7 @@ def ancestral_sample(vqvae, priors, m, n_samples, sample_tokens, sigma=0.01, con
     log_likelihood_sum = torch.zeros((n_samples,)).to(device)
 
     if latent_loss:
-        codebook = torch.load('codebook_precalc_22050_latent.pt')
+        codebook = torch.load('checkpoints/codebook_precalc_22050_latent.pt')
         codebook = codebook.to(device)  # shape (1, 2048*2048)
         M = vqvae.bottleneck.one_level_decode(codebook)  # (1, 64, 2048*2048)
         M = M.squeeze(0)  # (64, 2048*2048)
@@ -645,121 +644,70 @@ def rejection_sampling_latent(log_p_0_sum, log_p_1_sum, log_likelihood_sum, bs):
     print(f"rejection_vector_idx = {rejection_vector_idx}")
 
 
-def cross_prior_rejection(x_0, x_1, log_p_0_sum, log_p_1_sum, priors, sample_tokens):
-    n_samples = x_0.shape[0]
-    x_cond = torch.zeros((n_samples, 1, priors[0].width), dtype=torch.float).to(device)
+# def cross_prior_rejection(x_0, x_1, log_p_0_sum, log_p_1_sum, priors, sample_tokens):
+#     n_samples = x_0.shape[0]
+#     x_cond = torch.zeros((n_samples, 1, priors[0].width), dtype=torch.float).to(device)
+#
+#     log_p_0_1_sum = torch.zeros((n_samples,)).to(device)
+#     log_p_1_0_sum = torch.zeros((n_samples,)).to(device)
+#
+#     for sample_t in def_tqdm(range(0, sample_tokens)):
+#         x_0_1, cond_0_1 = priors[0].get_emb(sample_t, n_samples, x_1[:, sample_t - 1].unsqueeze(-1), x_cond, y_cond=None)
+#         priors[0].transformer.check_cache(n_samples, sample_t, fp16)
+#         x_0_1 = priors[0].transformer(x_0_1, encoder_kv=None, sample=True, fp16=fp16) # Transformer
+#         if priors[0].add_cond_after_transformer:
+#             x_0_1 = x_0_1 + cond_0_1
+#         assert x_0_1.shape == (n_samples, 1, priors[0].width)
+#         x_0_1 = priors[0].x_out(x_0_1)  # Predictions
+#         p_0_1 = torch.distributions.Categorical(logits=x_0_1).probs # Sample and replace x
+#         log_p_0_1 = torch.log(p_0_1) # n_samples, 1, 2048
+#
+#         x_1_0, cond_1_0 = priors[1].get_emb(sample_t, n_samples, x_0[:, sample_t - 1].unsqueeze(-1), x_cond, y_cond=None)
+#         priors[1].transformer.check_cache(n_samples, sample_t, fp16)
+#         x_1_0 = priors[1].transformer(x_1_0, encoder_kv=None, sample=True, fp16=fp16) # Transformer
+#         if priors[1].add_cond_after_transformer:
+#             x_1_0 = x_1_0 + cond_1_0
+#         assert x_1_0.shape == (n_samples, 1, priors[1].width)
+#         x_1_0 = priors[1].x_out(x_1_0)  # Predictions
+#         p_1_0 = torch.distributions.Categorical(logits=x_1_0).probs  # Sample and replace x
+#         log_p_1_0 = torch.log(p_1_0)   # n_samples, 1, 1024??? #2048
+#
+#         log_p_0_1_sum += (log_p_0_1[range(x_0.shape[0]), :, x_1[:, sample_t]]).squeeze(-1)   # .squeeze(-1)
+#         log_p_1_0_sum += (log_p_1_0[range(x_0.shape[0]), :, x_0[:, sample_t]]).squeeze(-1)   # x_0[:, sample_t]].squeeze(-1)
+#
+#     priors[0].transformer.del_cache()
+#     priors[1].transformer.del_cache()
+#
+#     remaining_0 = (log_p_1_0_sum < log_p_0_sum)
+#     remaining_1 = (log_p_0_1_sum < log_p_1_sum)
+#
+#     # log_p_0_sorted, log_p_0_sorted_idx = torch.sort(log_p_0_sum)
+#     # log_p_1_sorted, log_p_1_sorted_idx = torch.sort(log_p_1_sum)
+#     # log_p_0_1_sorted, log_p_0_1_sorted_idx = torch.sort(log_p_0_1_sum)
+#     # log_p_1_0_sorted, log_p_1_0_sorted_idx = torch.sort(log_p_1_0_sum)
+#
+#     print(f"log_p_0_sum: {log_p_0_sum}")
+#     print(f"log_p_0_1_sum: {log_p_0_1_sum}")
+#     print(f"log_p_1_sum: {log_p_1_sum}")
+#     print(f"log_p_1_0_sum: {log_p_1_0_sum}")
+#     return remaining_0, remaining_1
 
-    log_p_0_1_sum = torch.zeros((n_samples,)).to(device)
-    log_p_1_0_sum = torch.zeros((n_samples,)).to(device)
 
-    for sample_t in def_tqdm(range(0, sample_tokens)):
-        x_0_1, cond_0_1 = priors[0].get_emb(sample_t, n_samples, x_1[:, sample_t - 1].unsqueeze(-1), x_cond, y_cond=None)
-        priors[0].transformer.check_cache(n_samples, sample_t, fp16)
-        x_0_1 = priors[0].transformer(x_0_1, encoder_kv=None, sample=True, fp16=fp16) # Transformer
-        if priors[0].add_cond_after_transformer:
-            x_0_1 = x_0_1 + cond_0_1
-        assert x_0_1.shape == (n_samples, 1, priors[0].width)
-        x_0_1 = priors[0].x_out(x_0_1)  # Predictions
-        p_0_1 = torch.distributions.Categorical(logits=x_0_1).probs # Sample and replace x
-        log_p_0_1 = torch.log(p_0_1) # n_samples, 1, 2048
-
-        x_1_0, cond_1_0 = priors[1].get_emb(sample_t, n_samples, x_0[:, sample_t - 1].unsqueeze(-1), x_cond, y_cond=None)
-        priors[1].transformer.check_cache(n_samples, sample_t, fp16)
-        x_1_0 = priors[1].transformer(x_1_0, encoder_kv=None, sample=True, fp16=fp16) # Transformer
-        if priors[1].add_cond_after_transformer:
-            x_1_0 = x_1_0 + cond_1_0
-        assert x_1_0.shape == (n_samples, 1, priors[1].width)
-        x_1_0 = priors[1].x_out(x_1_0)  # Predictions
-        p_1_0 = torch.distributions.Categorical(logits=x_1_0).probs  # Sample and replace x
-        log_p_1_0 = torch.log(p_1_0)   # n_samples, 1, 1024??? #2048
-
-        log_p_0_1_sum += (log_p_0_1[range(x_0.shape[0]), :, x_1[:, sample_t]]).squeeze(-1)   # .squeeze(-1)
-        log_p_1_0_sum += (log_p_1_0[range(x_0.shape[0]), :, x_0[:, sample_t]]).squeeze(-1)   # x_0[:, sample_t]].squeeze(-1)
-
-    priors[0].transformer.del_cache()
-    priors[1].transformer.del_cache()
-
-    remaining_0 = (log_p_1_0_sum < log_p_0_sum)
-    remaining_1 = (log_p_0_1_sum < log_p_1_sum)
-
-    # log_p_0_sorted, log_p_0_sorted_idx = torch.sort(log_p_0_sum)
-    # log_p_1_sorted, log_p_1_sorted_idx = torch.sort(log_p_1_sum)
-    # log_p_0_1_sorted, log_p_0_1_sorted_idx = torch.sort(log_p_0_1_sum)
-    # log_p_1_0_sorted, log_p_1_0_sorted_idx = torch.sort(log_p_1_0_sum)
-
-    print(f"log_p_0_sum: {log_p_0_sum}")
-    print(f"log_p_0_1_sum: {log_p_0_1_sum}")
-    print(f"log_p_1_sum: {log_p_1_sum}")
-    print(f"log_p_1_0_sum: {log_p_1_0_sum}")
-    return remaining_0, remaining_1
-
-
-if __name__ == '__main__':
+def separate(args):
     rank, local_rank, device = setup_dist_from_mpi(port=29527)
+    args.sample_length = args.raw_to_tokens * args.sample_tokens
+    args.fp16 = True
+    assert args.alpha[0] + args.alpha[1] == 1.
 
-    raw_to_tokens = 64
-    l_bins = 2048
-    levels = 3
-    level = 2
-    sample_tokens = 1024  #512  # 1024 #1024  # 688  # 800
-    sample_length = raw_to_tokens * sample_tokens
-    sample_rate = 22050  #
-    fp16 = True
-    bs_chunks = 1
-    chunk_size = 32
-    window_mode = 'constant'
-    # mixture proportions
-    #alpha = [0.5, 0.5]
-    alpha = [0.5, 0.5] # [1., 1.]
-    #assert alpha[0] + alpha[1] == 1.
-    latent_loss = True
-    shift = 55. #64. # 50. #14.
-    downs_t = (2, 2, 2) #(3, 2, 2)
-    delta_likelihood = False
+    vqvae, priors = make_models(args.restore_vqvae, args.restore_priors, args.sample_length, args.downs_t, args.sample_rate,
+                                levels=args.levels, level=args.level, fp16=args.fp16, device=device)
+    mix, latent_mix, z_mixture, m0, m1, m0_real, m1_real = create_mixture_from_audio_files(args.path_1, args.path_2, args.raw_to_tokens, args.sample_tokens, vqvae, args.save_path,
+                                                                                           args.sample_rate, args.alpha, shift=args.shift)
 
-    # grid search hyperparams
-    multi_sigma = torch.tensor([0.2, 0.4, 0.6, 0.8]*16).cuda()
-    sigma           = 0.4 # multi_sigma #0.4  # 316227766  #0.316227766 # 0.316227766 # was the best 0.004 both for filtered and none
-    # multi_sigma = torch.tensor([0.4, 0.4, 0.4, 0.4]*16).cuda()
-    rejection_sigma = 0.06 #0.0625 #10000 #0.04 #0.02 #0.018  # 0. #0.02
-    context         = 50   # quello che funziona: 10
-    bs              = 64
-    top_k_posterior = 0    # 2  # 512   # 20 #20 # 20  # 3 andava bene su 3s; 20 migliore su 7s e funziona anche su 3s e 5s
-
-    # top_k sul posterior va bene 10
-
-    priors_list = [
-                   '../../../logs/SLAKH_DRUMS_22050_latent/checkpoint_drums_22050_latent_78_19k.pth.tar',
-                   '../../../logs/SLAKH_BASS_22050_latent/checkpoint_latest.pth.tar'
-                   # '../../../logs/SLAKH_BASS_22050/checkpoint_latest_42k.pth.tar', ###VQVAE_REQUANT###
-                   # '../../../logs/SLAKH_DRUMS_22050/checkpoint_drums_130_7k.pth.tar', ###VQVAE_REQUANT###
-                   # '../../../logs/checkpoint_DRUMS_slakh_21_epochs.pth.tar', ###VQVAE_OPENAI###
-                   # '../../../logs/checkpoint_bass_131_6k.pth.tar' ###VQVAE_OPENAI###
-                  ]
-
-    save_path = 'results'
-    data_path = 'data'
-
-    path_1 = '../../../data/drums/validation/Track01508.wav'
-    path_2 = '../../../data/bass/validation/Track01510.wav'
-    # path_1 = '../../../data/drums_songs/Track01884.wav'
-    # path_2 = '../../../data/bass_songs/Track01913.wav'
-
-    # restore_vqvae = 'https://openaipublic.azureedge.net/jukebox/models/5b/vqvae.pth.tar'
-
-
-    restore_vqvae = '../../../logs/checkpoint_step_60001_latent.pth.tar'
-
-    vqvae, priors = make_models(restore_vqvae, priors_list, sample_length, downs_t, sample_rate,
-                                levels=levels, level=level, fp16=fp16, device=device)
-    mix, latent_mix, z_mixture, m0, m1, m0_real, m1_real = create_mixture_from_audio_files(path_1, path_2, raw_to_tokens, sample_tokens, vqvae, save_path,
-                                                           sample_rate, alpha, shift=shift)
-
-    #  m, latent_m = load_mixture(mixture_path, save_path, vqvae, sample_rate=sample_rate, device=device)
     n_ctx = min(priors[0].n_ctx, priors[1].n_ctx)
     hop_length = n_ctx // 2
-    if latent_loss:
-        if delta_likelihood:
+    if not args.time_likelihood:
+        if args.delta_likelihood:
             m = z_mixture
         else:
             m = latent_mix
@@ -767,34 +715,68 @@ if __name__ == '__main__':
         m = mix
 
     x_0, x_1, log_p_0_sum, log_p_1_sum, log_likelihood_sum = sample_level(vqvae, [priors[0].prior, priors[1].prior], m=m, n_ctx=n_ctx,
-                           hop_length=hop_length, alpha=alpha, n_samples=bs,
-                           sample_tokens=sample_tokens, sigma=sigma, context=context, fp16=fp16,
-                           bs_chunks=bs_chunks, window_mode=window_mode, l_bins=l_bins,
-                           raw_to_tokens=raw_to_tokens, device=device, chunk_size=chunk_size,
-                           latent_loss=latent_loss, top_k_posterior=top_k_posterior, delta_likelihood=delta_likelihood)
+                                                                          hop_length=hop_length, alpha=args.alpha, n_samples=args.bs,
+                                                                          sample_tokens=args.sample_tokens, sigma=args.sigma, context=args.context, fp16=args.fp16,
+                                                                          bs_chunks=args.bs_chunks, window_mode=args.window_mode, l_bins=args.l_bins,
+                                                                          raw_to_tokens=args.raw_to_tokens, device=device, chunk_size=args.chunk_size,
+                                                                          latent_loss=not args.time_likelihood, top_k_posterior=args.top_k_posterior, delta_likelihood=args.delta_likelihood)
 
     res_0 = vqvae.decode([x_0], start_level=2, bs_chunks=1).squeeze(-1)  # n_samples, sample_tokens*128
     res_1 = vqvae.decode([x_1], start_level=2, bs_chunks=1).squeeze(-1)  # n_samples, sample_tokens*128
 
-    ## remaining_0, remaining_1 = cross_prior_rejection(x_0, x_1, log_p_0_sum, log_p_1_sum,
-    ##                                                                           [priors[0].prior, priors[1].prior],
-    ##                                                                           sample_tokens)
-    ## import torchaudio
-    ## res_0 = torch.zeros((64, 65536)).cuda()
-    ## res_1 = torch.zeros((64, 65536)).cuda()
-    ## for i in range(64):
-    ##     res_0[i] = torchaudio.load(f'./results/res_{i}_first_prior.wav')[0].cuda()
-    ##     res_1[i] = torchaudio.load(f'./results/res_{i}_second_prior.wav')[0].cuda()
-
-    remaining_0 = None
-    remaining_1 = None
-
     # noinspection PyTypeChecker
-    rejection_sampling(log_p_0_sum, log_p_1_sum, res_0, res_1, remaining_0, remaining_1, mix, alpha,
-                       bs, rejection_sigma=rejection_sigma, n_samples=sample_tokens)
+    rejection_sampling(log_p_0_sum, log_p_1_sum, res_0, res_1, None, None, mix, args.alpha,
+                       args.bs, rejection_sigma=args.rejection_sigma, n_samples=args.sample_tokens)
 
-    ## rejection_sampling_latent(log_p_0_sum, log_p_1_sum, log_likelihood_sum, bs)
     evaluate_sdr_gt(m0, m1, res_0, res_1)
     evaluate_sdr_real(m0_real, m1_real, res_0, res_1)
     evaluate_l2_gt(m0, m1, res_0, res_1)
-    save_samples(x_0, x_1, res_0, res_1, sample_rate, alpha, f'{save_path}/')
+    save_samples(x_0, x_1, res_0, res_1, args.sample_rate, args.alpha, f'{args.save_path}/')
+
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description='Bayesian inference with LQ-VAE')
+
+    parser.add_argument('--path_1', type=str, help='Folder containing the first source',
+                        default='data/drums/validation/Track01510.wav')
+    parser.add_argument('--path_2', type=str, help='Folder containing the second source',
+                    default='data/bass/validation/Track01510.wav')
+    parser.add_argument('--shift', type=float, help='Where to start separating inside the song (in seconds)',
+                        default=0.)
+    parser.add_argument('--bs', type=int, help='Batch size', default=64)
+
+    parser.add_argument('--sample_tokens', type=int, help='How many tokens to sample (344 tokens for ~1s). '
+                                                          'Default: 1024 for ~ 3s.', default=1024)
+
+    parser.add_argument('--sigma', type=float, help='Inference sigma', default=0.4)
+    parser.add_argument('--alpha', type=float, nargs=2, help='Convex coefficients for the mixture',
+                        default=[0.5, 0.5], metavar=('ALPHA_1', 'ALPHA_2'))
+    parser.add_argument('--raw_to_tokens', type=int, help='Downsampling factor', default=64)
+    parser.add_argument('--l_bins', type=int, help='Number of latent codes', default=2048)
+    parser.add_argument('--levels', type=int, help='Number of levels', default=3)
+    parser.add_argument('--level', type=int, help='VQ-VAE Level on which separation is performed', default=2)
+
+    parser.add_argument('--sample_rate', type=int, help='Sample rate', default=22050)
+    parser.add_argument('--bs_chunks', type=int, help='Batch size chunks', default=1)
+    parser.add_argument('--chunk_size', type=int, help='Batch size chunk size', default=32)
+    parser.add_argument('--window_mode', type=str, help='Local window type for time domain inference',
+                        default='constant', choices=['constant', 'increment'])
+    parser.add_argument('--downs_t', type=int, nargs='+', help='Downsampling factors', default=[2, 2, 2])
+    parser.add_argument('--context', type=int, help='Time domain local context', default=50)
+    parser.add_argument('--top_k_posterior', type=int, help="Filter top-k over the posterior (0 = don't filter)",
+                        default=0)
+    parser.add_argument('--time_likelihood', action='store_true',
+                        help='Perform inference with likelihood function computed in time domain')
+    parser.add_argument('--delta_likelihood', action='store_true',
+                        help='Perform inference via delta functions instead of gaussians')
+    parser.add_argument('--restore_priors', type=str, help='Time domain local context',
+                        default=['checkpoints/checkpoint_drums_22050_latent_78_19k.pth.tar',
+                                                              'checkpoints/checkpoint_latest.pth.tar'], nargs=2,
+                        metavar=('PRIOR_1', 'PRIOR_2'))
+    parser.add_argument('--restore_vqvae', type=str, help='Time domain local context',
+                        default='checkpoints/checkpoint_step_60001_latent.pth.tar')
+    parser.add_argument('--save_path', type=str, help='Folder containing the results', default='results')
+
+    args = parser.parse_args()
+    separate(args)
