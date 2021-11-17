@@ -754,7 +754,7 @@ def separate(args):
 
     # noinspection PyTypeChecker
     rejection_sampling(log_p_0_sum, log_p_1_sum, res_0, res_1, None, None, mix, args.alpha,
-                       args.bs, rejection_sigma=args.rejection_sigma, n_samples=args.sample_tokens)
+                       args.bs, rejection_sigma=None, n_samples=args.sample_tokens)
 
     evaluate_sdr_gt(m0, m1, res_0, res_1)
     evaluate_sdr_real(m0_real, m1_real, res_0, res_1)
