@@ -18,7 +18,7 @@ pip install -e .
 ```
 # Checkpoints
 
-- Enter inside `script/` folder and create the folder `checkpoints/`. 
+- Enter inside `script/` folder and create the folder `checkpoints/` and the folder `results/`.  
 - Download the checkpoints contained in this [Google Drive](https://drive.google.com/drive/folders/1LWhzfUMDg0fnSzPOgMNDgfjbEfF8ARO6?usp=sharing) folder and put them inside `checkpoints/`
 
 # Separation
