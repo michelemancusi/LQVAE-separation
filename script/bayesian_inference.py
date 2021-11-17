@@ -512,7 +512,7 @@ def sdr(track1, track2):
 
 
 def rejection_sampling(nll0, nll1, res0, res1, remaining0, remaining1, m, alpha, bs, rejection_sigma,
-                       n_samples, rejection_top_k):
+                       n_samples):
     nll_sum_0_sorted, indices_nll_sum_0_sorted = torch.sort(nll0)
     nll_sum_1_sorted, indices_nll_sum_1_sorted = torch.sort(nll1)
 
