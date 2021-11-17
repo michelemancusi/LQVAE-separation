@@ -1,7 +1,7 @@
 # LQVAE-separation
 Code for "Unsupervised Source Separation via Bayesian inference in the latent domain"
 
-[Paper](https://arxiv.org/abs/putarxivhere) 
+[Paper](https://arxiv.org/abs/2110.05313) 
 
 # Install
 
@@ -11,7 +11,8 @@ Install the conda package manager from https://docs.conda.io/en/latest/miniconda
 conda create --name lqvae-separation python=3.7.5
 conda activate lqvae-separation
 pip install mpi4py==3.0.3
-conda install pytorch=1.4 torchvision=0.5 torchaudio=0.5 cudatoolkit=10.0 -c pytorch
+pip install ffmpeg-python==0.2.0
+pip install torch==1.7.1 torchvision==0.8.2 torchaudio==0.7.2 -c pytorch
 pip install -r requirements.txt
 pip install -e .
 ```
@@ -26,4 +27,5 @@ pip install -e .
   ```
   PYTHONPATH=.. python bayesian_inference.py --shift=shift --path_1=path_1 --path_2=path_2 --bs=bs
   ```
-- The default value for `bs` is `64`, and can be handled by an RTX3080 with 16 GB of VRAM. Lower the value if you get `CUDA: out of memory`.
+- The default value for `bs` is `64`, and can be handled by an RTX3080 with 16 GB of VRAM. Lower the value if you get `CUDA: out of memory`. The va
+- 

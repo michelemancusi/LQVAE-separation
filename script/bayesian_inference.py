@@ -511,7 +511,8 @@ def sdr(track1, track2):
     return np.nanmedian(sdr_metric[0])
 
 
-def rejection_sampling(nll0, nll1, res0, res1, remaining0, remaining1, m, alpha, bs, rejection_sigma, n_samples):
+def rejection_sampling(nll0, nll1, res0, res1, remaining0, remaining1, m, alpha, bs, rejection_sigma,
+                       n_samples, rejection_top_k):
     nll_sum_0_sorted, indices_nll_sum_0_sorted = torch.sort(nll0)
     nll_sum_1_sorted, indices_nll_sum_1_sorted = torch.sort(nll1)
 
@@ -575,7 +576,7 @@ def rejection_sampling(nll0, nll1, res0, res1, remaining0, remaining1, m, alpha,
     print(f"marginal_1_idx_sorted = {marginal_1_idx_sorted}")
 
     global_l2_vectorized = global_l2.reshape(bs*bs)  # righe: prior_0, colonne: prior_1
-    global_l2_topk_vectorized, global_l2_topk_idx_vectorized  = torch.topk(global_l2_vectorized, k=10, largest=False)
+    global_l2_topk_vectorized, global_l2_topk_idx_vectorized  = torch.topk(global_l2_vectorized, k=bs, largest=False)
     print(f"global_l2_topk = {global_l2_topk_vectorized}")
     print(f"global_l2_topk_idx = {[(idx // bs, idx % bs) for idx in global_l2_topk_idx_vectorized]}")
 
