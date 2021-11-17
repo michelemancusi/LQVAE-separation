@@ -19,6 +19,7 @@ from jukebox.utils.logger import def_tqdm
 from tqdm import tqdm
 import numpy as np
 
+# plt.set_cmap('viridis')
 
 def sample_level(vqvae, priors, m, n_samples, n_ctx, hop_length, sample_tokens, sigma=0.01, context=8, fp16=False, temp=1.0,
                  alpha=None, top_k=0, top_p=0.0, bs_chunks=1, window_mode='constant', l_bins=2048, raw_to_tokens=128, device=None,
@@ -317,6 +318,15 @@ def ancestral_sample(vqvae, priors, m, n_samples, sample_tokens, sigma=0.01, con
         log_p_1 = torch.log(p_1) # n_samples, 1, 2048
 
         log_p = log_p_0 + log_p_1.permute(0, 2, 1)  # n_samples, 2048, 2048 (p_1 sulle righe, p_0 sulle colonne)
+
+        #plt.figure()
+        #plt.matshow(log_p[0].cpu().numpy(), vmin=-30., vmax=0.)
+        # print(f"log_p[0] = {log_p[0]}")
+        # plt.colorbar()
+        # plt.savefig(f'log_p_t={sample_t}', dpi=200)
+        # plt.close()
+        # plt.figure()
+
         #print(f"{log_p.shape = }")
 
         ### START LOG LIKELIHOOD
@@ -370,8 +380,14 @@ def ancestral_sample(vqvae, priors, m, n_samples, sample_tokens, sigma=0.01, con
                 #sigma_rejection_squared = - ml / (2*mp)
                 # print(f"sigma_rejection = {torch.sqrt(sigma_rejection_squared)}")
                 # log_likelihood = (-(1/(2.*(sigma.reshape(-1, 1, 1)))) * l2.unsqueeze(0).repeat(bs, 1, 1))
-
                 log_likelihood = -(1/(2.*(sigma**2)))*torch.linalg.norm(M - m[:, :, sample_t].unsqueeze(0), dim=-1)**2  # n_samples, 2048, 2048
+                #print(f"log_likelihood = {log_likelihood}")
+                # plt.figure()
+                # plt.matshow(log_likelihood.cpu().numpy(), vmin=-100., vmax=0.)#, vmin=-1000., vmax=0.)
+                #  plt.colorbar()
+                # plt.savefig(f'log_likelihood_t={sample_t}', dpi=200)
+                # plt.close()
+                # plt.figure()
 
         # print(f"{log_likelihood.shape = }")
         # print(f"{torch.min(log_likelihood) = }")
@@ -382,11 +398,23 @@ def ancestral_sample(vqvae, priors, m, n_samples, sample_tokens, sigma=0.01, con
 
         log_posterior = log_likelihood + log_p  # n_samples, 2048, 2048 #.unsqueeze(-1).repeat(32, 1, 1)
 
+
+
+        # plt.figure()
+
         # print(f"{torch.min(log_posterior) = }")
         # print(f"{torch.max(log_posterior) = }")
         log_posterior = log_posterior.reshape(n_samples, l_bins*l_bins) # n_samples, 2048 * 2048
         log_posterior = filter_logits(log_posterior.unsqueeze(1), top_k=top_k_posterior, top_p=0.0).squeeze(1)
         posterior = torch.distributions.Categorical(logits=log_posterior)
+
+        #plt.figure()
+        #plt.matshow(posterior.logits.reshape(-1, 2048, 2048)[0].cpu().numpy(), vmin=-100., vmax=0.)#, vmin=-100., vmax=0.)
+        # print(f"log_posterior[0] = {log_posterior[0]}")
+        # plt.colorbar()
+        #plt.savefig(f'log_posterior_t={sample_t}', dpi=200)
+        #plt.close()
+
         # print(f"{torch.min(posterior.probs) = }")
         # print(f"{torch.max(posterior.probs) = }")
 
@@ -503,8 +531,8 @@ def rejection_sampling(nll0, nll1, res0, res1, remaining0, remaining1, m, alpha,
 
     global_prior_reverse = global_prior_reverse.reshape(bs*bs)
     global_prior_reverse = torch.distributions.Categorical(logits=global_prior_reverse)
-    plt.matshow(global_prior_reverse.logits.reshape(bs, bs))
-    plt.figure()
+    #plt.matshow(global_prior_reverse.logits.reshape(bs, bs))
+    #plt.figure()
     global_prior_reverse = global_prior_reverse.logits / n_samples
     global_prior_reverse = torch.distributions.Categorical(logits=global_prior_reverse).logits.reshape(bs, bs)
 
@@ -694,7 +722,7 @@ def rejection_sampling_latent(log_p_0_sum, log_p_1_sum, log_likelihood_sum, bs):
 
 
 def separate(args):
-    rank, local_rank, device = setup_dist_from_mpi(port=29527)
+    rank, local_rank, device = setup_dist_from_mpi(port=29529)
     args.sample_length = args.raw_to_tokens * args.sample_tokens
     args.fp16 = True
     assert args.alpha[0] + args.alpha[1] == 1.

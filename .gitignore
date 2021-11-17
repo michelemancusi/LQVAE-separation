@@ -131,10 +131,8 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-data/
 logs/
 *runs/
 script/results
-script/data
 script/checkpoints
 .idea/
