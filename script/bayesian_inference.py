@@ -23,7 +23,7 @@ import numpy as np
 
 def sample_level(vqvae, priors, m, n_samples, n_ctx, hop_length, sample_tokens, sigma=0.01, context=8, fp16=False, temp=1.0,
                  alpha=None, top_k=0, top_p=0.0, bs_chunks=1, window_mode='constant', l_bins=2048, raw_to_tokens=128, device=None,
-                 chunk_size=None, latent_loss=True, top_k_posterior=0, delta_likelihood=False):
+                 chunk_size=None, latent_loss=True, top_k_posterior=0, delta_likelihood=False, sum_codebook=None):
     xs_0 = torch.zeros(n_samples, 0, dtype=torch.long, device=device)
     xs_1 = torch.zeros(n_samples, 0, dtype=torch.long, device=device)
 
@@ -33,19 +33,19 @@ def sample_level(vqvae, priors, m, n_samples, n_ctx, hop_length, sample_tokens, 
                                               context=context, fp16=fp16, temp=temp, alpha=alpha, top_k=top_k,
                                               top_p=top_p, bs_chunks=bs_chunks, window_mode=window_mode, l_bins=l_bins,
                                               raw_to_tokens=raw_to_tokens, device=device, chunk_size=chunk_size,
-                                              latent_loss=latent_loss, top_k_posterior=top_k_posterior, delta_likelihood=delta_likelihood)
+                                              latent_loss=latent_loss, top_k_posterior=top_k_posterior, delta_likelihood=delta_likelihood, sum_codebook=sum_codebook)
     else:
         xs_0, xs_1, log_p_0_sum, log_p_1_sum, log_likelihood_sum = ancestral_sample(vqvae, priors, m, n_samples, sample_tokens=sample_tokens, sigma=sigma,
                                         context=context, fp16=fp16, temp=temp, alpha=alpha, top_k=top_k, top_p=top_p,
                                         bs_chunks=bs_chunks, window_mode=window_mode, l_bins=l_bins,
                                         raw_to_tokens=raw_to_tokens, device=device, latent_loss=latent_loss,
-                                        top_k_posterior=top_k_posterior, delta_likelihood=delta_likelihood)
+                                        top_k_posterior=top_k_posterior, delta_likelihood=delta_likelihood, sum_codebook=sum_codebook)
     return xs_0, xs_1, log_p_0_sum, log_p_1_sum, log_likelihood_sum
 
 
 def sample_single_window(xs_0, xs_1, vqvae, priors, m, n_samples, n_ctx, start=0, sigma=0.01, context=8, fp16=False, temp=1.0,
                  alpha=None, top_k=0, top_p=0.0, bs_chunks=1, window_mode='constant', l_bins=2048, raw_to_tokens=128, device=None,
-                 chunk_size=None, latent_loss=True, top_k_posterior=0, delta_likelihood=False):
+                 chunk_size=None, latent_loss=True, top_k_posterior=0, delta_likelihood=False, sum_codebook=None):
     end = start + n_ctx
     # get z already sampled at current level
     x_0 = xs_0[:, start:end]
@@ -62,7 +62,8 @@ def sample_single_window(xs_0, xs_1, vqvae, priors, m, n_samples, n_ctx, start=0
     x_0, x_1, log_p_0_sum, log_p_1_sum, log_likelihood_sum = sample(x_0, x_1, vqvae, priors, m, n_samples, sample_tokens=sample_tokens, sigma=sigma, context=context,
                       fp16=fp16, temp=temp, alpha=alpha, top_k=top_k, top_p=top_p, bs_chunks=bs_chunks,
                       window_mode=window_mode, l_bins=l_bins, raw_to_tokens=raw_to_tokens, device=device,
-                      chunk_size=chunk_size, latent_loss=latent_loss, top_k_posterior=top_k_posterior, delta_likelihood=delta_likelihood)
+                      chunk_size=chunk_size, latent_loss=latent_loss, top_k_posterior=top_k_posterior, delta_likelihood=delta_likelihood,
+                      sum_codebook=sum_codebook)
 
     # Update z with new sample
     x_0_new = x_0[:, -new_tokens:]
@@ -76,7 +77,7 @@ def sample_single_window(xs_0, xs_1, vqvae, priors, m, n_samples, n_ctx, start=0
 
 def sample(xs_0, xs_1, vqvae, priors, m, n_samples, sample_tokens, sigma=0.01, context=8, fp16=False, temp=1.0,
            alpha=None, top_k=0, top_p=0.0, bs_chunks=1, window_mode='constant', l_bins=2048, raw_to_tokens=128,
-           device=None, chunk_size=None, latent_loss=True, top_k_posterior=0, delta_likelihood=False):
+           device=None, chunk_size=None, latent_loss=True, top_k_posterior=0, delta_likelihood=False, sum_codebook=None):
     no_past_context = (xs_0 is None or xs_0.shape[1] == 0 or xs_1 is None or xs_1.shape[1] == 0)
     with torch.no_grad():
         if no_past_context:
@@ -84,13 +85,14 @@ def sample(xs_0, xs_1, vqvae, priors, m, n_samples, sample_tokens, sigma=0.01, c
                                         context=context, fp16=fp16, temp=temp, alpha=alpha, top_k=top_k, top_p=top_p,
                                         bs_chunks=bs_chunks, window_mode=window_mode, l_bins=l_bins,
                                         raw_to_tokens=raw_to_tokens, device=device, latent_loss=latent_loss,
-                                        top_k_posterior=top_k_posterior, delta_likelihood=delta_likelihood)
+                                        top_k_posterior=top_k_posterior, delta_likelihood=delta_likelihood, sum_codebook=sum_codebook)
         else:
             x_0, x_1 = primed_sample(xs_0, xs_1, vqvae, priors, m, n_samples, sample_tokens=sample_tokens,
                                      sigma=sigma, context=context, fp16=fp16, temp=temp, alpha=alpha, top_k=top_k,
                                      top_p=top_p, bs_chunks=bs_chunks, window_mode=window_mode, l_bins=l_bins,
                                      raw_to_tokens=raw_to_tokens, device=device, chunk_size=chunk_size,
-                                     latent_loss=latent_loss, top_k_posterior=top_k_posterior, delta_likelihood=delta_likelihood)
+                                     latent_loss=latent_loss, top_k_posterior=top_k_posterior, delta_likelihood=delta_likelihood,
+                                     sum_codebook=sum_codebook)
             nll_sum_0 = None
             nll_sum_1 = None
     return x_0, x_1, nll_sum_0, nll_sum_1, None
@@ -98,13 +100,13 @@ def sample(xs_0, xs_1, vqvae, priors, m, n_samples, sample_tokens, sigma=0.01, c
 
 def primed_sample(x_0, x_1, vqvae, priors, m, n_samples, sample_tokens, sigma, context, fp16, temp, alpha, top_k,
                   top_p, bs_chunks, window_mode, l_bins, raw_to_tokens, device, chunk_size=None, latent_loss=True,
-                  top_k_posterior=0, delta_likelihood=False):
+                  top_k_posterior=0, delta_likelihood=False, sum_codebook=None):
 
     x_cond = torch.zeros((n_samples, 1, priors[0].width), dtype=torch.float).to(device)
 
 
     if latent_loss:
-        codebook = torch.load('checkpoints/codebook_precalc_22050_latent.pt')
+        codebook = torch.load(sum_codebook)
         codebook = codebook.to(device)  # shape (2048 x 2048)
         M = vqvae.bottleneck.one_level_decode(codebook.reshape(2048, 2048)).permute(0, 2, 1) # (2048,2048,64)
     else:
@@ -273,7 +275,7 @@ def primed_sample(x_0, x_1, vqvae, priors, m, n_samples, sample_tokens, sigma, c
 
 def ancestral_sample(vqvae, priors, m, n_samples, sample_tokens, sigma=0.01, context=8, fp16=False, temp=1.0, alpha=None,
                      top_k=0, top_p=0.0, bs_chunks=1, window_mode='constant', l_bins=2048, raw_to_tokens=128, device=None,
-                     latent_loss=True, top_k_posterior=0, delta_likelihood=False):
+                     latent_loss=True, top_k_posterior=0, delta_likelihood=False, sum_codebook=None):
     x_cond = torch.zeros((n_samples, 1, priors[0].width), dtype=torch.float).to(device)
     xs_0, xs_1, x_0, x_1 = [], [], None, None
 
@@ -282,7 +284,7 @@ def ancestral_sample(vqvae, priors, m, n_samples, sample_tokens, sigma=0.01, con
     log_likelihood_sum = torch.zeros((n_samples,)).to(device)
 
     if latent_loss:
-        codebook = torch.load('checkpoints/codebook_precalc_22050_latent.pt')
+        codebook = torch.load(sum_codebook)
         codebook = codebook.to(device)  # shape (1, 2048*2048)
         M = vqvae.bottleneck.one_level_decode(codebook)  # (1, 64, 2048*2048)
         M = M.squeeze(0)  # (64, 2048*2048)
@@ -748,7 +750,8 @@ def separate(args):
                                                                           sample_tokens=args.sample_tokens, sigma=args.sigma, context=args.context, fp16=args.fp16,
                                                                           bs_chunks=args.bs_chunks, window_mode=args.window_mode, l_bins=args.l_bins,
                                                                           raw_to_tokens=args.raw_to_tokens, device=device, chunk_size=args.chunk_size,
-                                                                          latent_loss=not args.time_likelihood, top_k_posterior=args.top_k_posterior, delta_likelihood=args.delta_likelihood)
+                                                                          latent_loss=not args.time_likelihood, top_k_posterior=args.top_k_posterior,
+                                                                          delta_likelihood=args.delta_likelihood, sum_codebook=args.sum_codebook)
 
     res_0 = vqvae.decode([x_0], start_level=2, bs_chunks=1).squeeze(-1)  # n_samples, sample_tokens*128
     res_1 = vqvae.decode([x_1], start_level=2, bs_chunks=1).squeeze(-1)  # n_samples, sample_tokens*128
@@ -805,6 +808,8 @@ if __name__ == '__main__':
                         metavar=('PRIOR_1', 'PRIOR_2'))
     parser.add_argument('--restore_vqvae', type=str, help='Time domain local context',
                         default='checkpoints/checkpoint_step_60001_latent.pth.tar')
+    parser.add_argument('--sum_codebook', type=str, help='Pre-computed sum codebook path',
+                        default='checkpoints/codebook_precalc_22050_latent.pt')
     parser.add_argument('--save_path', type=str, help='Folder containing the results', default='results')
 
     args = parser.parse_args()
