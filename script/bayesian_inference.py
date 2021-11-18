@@ -706,11 +706,11 @@ def create_mixture_from_audio_files(path_audio_1, path_audio_2, raw_to_tokens, s
     return mix, latent_mix, z_mixture, m1, m2, m1_real, m2_real
 
 
-def make_models(vqvae_path, priors_list, sample_length, downs_t, sample_rate,
+def make_models(vqvae_path, priors_list, sample_length, downs_t, sample_rate, commit,
                 levels=3, level=2, fp16=True, device='cuda'):
     # construct openai vqvae and priors
     vqvae = make_vqvae(setup_hparams('vqvae', dict(sample_length=sample_length, downs_t=downs_t, sr=sample_rate,
-                                                   restore_vqvae=vqvae_path)), device)
+                                                   commit=commit, restore_vqvae=vqvae_path)), device)
     prior_path_0 = priors_list[0]
     prior_path_1 = priors_list[1]
 
@@ -725,15 +725,16 @@ def make_models(vqvae_path, priors_list, sample_length, downs_t, sample_rate,
 
 def separate(args):
     rank, local_rank, device = setup_dist_from_mpi(port=29531)
+
     args.sample_length = args.raw_to_tokens * args.l_bins #sample_tokens
     args.fp16 = True
     assert args.alpha[0] + args.alpha[1] == 1.
 
-    vqvae, priors = make_models(args.restore_vqvae, args.restore_priors, args.sample_length, args.downs_t, args.sample_rate,
-                                levels=args.levels, level=args.level, fp16=args.fp16, device=device)
+    vqvae, priors = make_models(args.restore_vqvae, args.restore_priors, args.sample_length, args.downs_t,
+                                args.sample_rate, args.commit, levels=args.levels, level=args.level,
+                                fp16=args.fp16, device=device)
     mix, latent_mix, z_mixture, m0, m1, m0_real, m1_real = create_mixture_from_audio_files(args.path_1, args.path_2, args.raw_to_tokens, args.sample_tokens, vqvae, args.save_path,
                                                                                            args.sample_rate, args.alpha, shift=args.shift)
-
     n_ctx = min(priors[0].n_ctx, priors[1].n_ctx)
     hop_length = n_ctx // 2
     if not args.time_likelihood:
@@ -810,6 +811,7 @@ if __name__ == '__main__':
     parser.add_argument('--sum_codebook', type=str, help='Pre-computed sum codebook path',
                         default='checkpoints/codebook_precalc_22050_latent.pt')
     parser.add_argument('--save_path', type=str, help='Folder containing the results', default='results')
+    parser.add_argument('--commit', type=float, help='Commit scale', default=1.0)
 
     args = parser.parse_args()
     separate(args)
