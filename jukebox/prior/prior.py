@@ -97,7 +97,7 @@ class SimplePrior(nn.Module):
             self.prior = ConditionalAutoregressive2D(input_shape=(sum(self.prior_dims),),
                                                      bins=sum(self.prior_bins),
                                                      x_cond=(self.x_cond or self.y_cond), y_cond=True,
-                                                     prime_len=self.prime_loss_dims,
+                                                     prime_len=self.prime_loss_dims, level=level,
                                                      **prior_kwargs)
 
         else:
@@ -108,7 +108,7 @@ class SimplePrior(nn.Module):
                 self.prime_loss_dims = np.prod(prime_input_shape)
                 self.prime_acts_width, self.prime_state_width = prime_kwargs['width'], prior_kwargs['width']
                 self.prime_prior = ConditionalAutoregressive2D(input_shape=prime_input_shape, x_cond=False, y_cond=False,
-                                                               only_encode=True,
+                                                               only_encode=True, level=level,
                                                                **prime_kwargs)
                 self.prime_state_proj = Conv1D(self.prime_acts_width, self.prime_state_width, init_scale=prime_kwargs['init_scale'])
                 self.prime_state_ln = LayerNorm(self.prime_state_width)
@@ -121,6 +121,7 @@ class SimplePrior(nn.Module):
             self.total_loss_dims = self.prime_loss_dims + self.gen_loss_dims
             self.prior = ConditionalAutoregressive2D(x_cond=(self.x_cond or self.y_cond), y_cond=self.y_cond,
                                                      encoder_dims = self.prime_loss_dims, merged_decoder=merged_decoder,
+                                                     level=level,
                                                      **prior_kwargs)
 
         self.n_ctx = self.gen_loss_dims

@@ -28,3 +28,9 @@ pip install -e .
   PYTHONPATH=.. python bayesian_inference.py --shift=shift --path_1=path_1 --path_2=path_2 --bs=bs
   ```
 - The default value for `bs` is `64`, and can be handled by an RTX3080 with 16 GB of VRAM. Lower the value if you get `CUDA: out of memory`.
+
+# Training
+
+- The `vqvae/vqvae.py`file of Jukebox has been modified in order to include the linearization loss of the LQ-VAE (it is computed at all levels of the hierarchical VQ-VAE but
+we only care of the top-most level given that we perform separation there). One can train a new LQ-VAE on custom
+data by running (the trained model uses the `vqvae` hyperparameters in `hparams.py` so if you want to change the separation level)

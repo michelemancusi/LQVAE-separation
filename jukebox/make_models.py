@@ -120,7 +120,6 @@ def make_prior(hps, vqvae, device='cuda'):
                         zero_out=hps.zero_out, res_scale=hps.res_scale, pos_init=hps.pos_init,
                         init_scale=hps.init_scale,
                         m_attn=hps.m_attn, m_mlp=hps.m_mlp, bottleneck=vqvae.bottleneck, emb_width=hps.emb_width,
-                        noise_schedule=hps.noise_schedule,
                         checkpoint_res=hps.c_res if hps.train else 0, checkpoint_attn=hps.c_attn if hps.train else 0,
                         checkpoint_mlp=hps.c_mlp if hps.train else 0)
 
