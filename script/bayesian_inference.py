@@ -398,7 +398,8 @@ def ancestral_sample(vqvae, priors, m, n_samples, sample_tokens, sigma=0.01, con
         # print(f"{torch.max(log_p) = }")
         #### END LIKELIHOOD ####
 
-        log_posterior = log_likelihood + log_p  # n_samples, 2048, 2048 #.unsqueeze(-1).repeat(32, 1, 1)
+        log_posterior = log_likelihood + log_p
+        # log_posterior = log_likelihood.unsqueeze(-1).repeat(n_samples, 1, 1)   # n_samples, 2048, 2048 #.unsqueeze(-1).repeat(32, 1, 1)
 
 
 
@@ -443,53 +444,6 @@ def ancestral_sample(vqvae, priors, m, n_samples, sample_tokens, sigma=0.01, con
     x_1 = torch.cat(xs_1, dim=1)
     x_1 = priors[1].postprocess(x_1, sample_tokens)
     return x_0, x_1, log_p_0_sum, log_p_1_sum, None #log_likelihood_sum
-
-
-def create_mixture_from_audio_files(path_audio_1, path_audio_2, raw_to_tokens, sample_tokens,
-                                    vqvae, save_path, sample_rate, alpha, device='cuda', shift=0.):
-    m1, _ = torchaudio.load(path_audio_1) #deve essere di dimensioni (1, length) es (1, 5060608)
-    m2, _ = torchaudio.load(path_audio_2)
-    shift = int(shift * sample_rate)
-    assert sample_tokens * raw_to_tokens <= min(m1.shape[-1], m2.shape[-1]), "Sources must be longer than sample_tokens"
-    minin = sample_tokens * raw_to_tokens
-    m1_real    = m1[:, shift:shift+minin]
-    m2_real    = m2[:, shift:shift+minin]
-    mix        = alpha[0]*m1_real + alpha[1]*m2_real
-    torchaudio.save(f'{save_path}/real_mix.wav', mix.cpu().squeeze(-1), sample_rate=sample_rate)
-    torchaudio.save(f'{save_path}/real_m1.wav',  m1_real.cpu().squeeze(-1), sample_rate=sample_rate)
-    torchaudio.save(f'{save_path}/real_m2.wav',  m2_real.cpu().squeeze(-1), sample_rate=sample_rate)
-
-    z_m1 = vqvae.encode(m1_real.unsqueeze(-1).to(device), start_level=2, bs_chunks=1)[0]
-    z_m2 = vqvae.encode(m2_real.unsqueeze(-1).to(device), start_level=2, bs_chunks=1)[0]
-    z_mixture = vqvae.encode(mix.unsqueeze(-1).to(device), start_level=2, bs_chunks=1)[0]
-    latent_mix = vqvae.bottleneck.decode([z_mixture]*3)[-1]
-    mix = vqvae.decode([z_mixture], start_level=2, bs_chunks=1).squeeze(-1)  # 1, 8192*128
-    m1 = vqvae.decode([z_m1], start_level=2, bs_chunks=1).squeeze(-1)  # 1, 8192*128
-    m2 = vqvae.decode([z_m2], start_level=2, bs_chunks=1).squeeze(-1)  # 1, 8192*128
-    if not os.path.exists(f'{save_path}/'):
-        os.makedirs(f'{save_path}/')
-    torchaudio.save(f'{save_path}/mix.wav', mix.cpu().squeeze(-1), sample_rate=sample_rate)
-    torchaudio.save(f'{save_path}/m1.wav', m1.cpu().squeeze(-1), sample_rate=sample_rate)
-    torchaudio.save(f'{save_path}/m2.wav', m2.cpu().squeeze(-1), sample_rate=sample_rate)
-    return mix, latent_mix, z_mixture, m1, m2, m1_real, m2_real
-
-
-def make_models(vqvae_path, priors_list, sample_length, downs_t, sample_rate,
-                levels=3, level=2, fp16=True, device='cuda'):
-    # construct openai vqvae and priors
-    vqvae = make_vqvae(setup_hparams('vqvae', dict(sample_length=sample_length, downs_t=downs_t, sr=sample_rate,
-                                                   restore_vqvae=vqvae_path)), device)
-    prior_path_0 = priors_list[0]
-    prior_path_1 = priors_list[1]
-
-    prior_0 = make_prior(setup_hparams('small_prior', dict(levels=levels, level=level, labels=None,
-                                                           restore_prior=prior_path_0, c_res=1, fp16_params=fp16,
-                                                           n_ctx=8192)), vqvae, device)
-    prior_1 = make_prior(setup_hparams('small_prior', dict(levels=levels, level=level, labels=None,
-                                                           restore_prior=prior_path_1, c_res=1, fp16_params=fp16,
-                                                           n_ctx=8192)), vqvae, device)
-    priors = [prior_0, prior_1]
-    return vqvae, priors
 
 
 def save_samples(x_0, x_1, res_0, res_1, sample_rate, alpha, path='results'):
@@ -723,10 +677,55 @@ def rejection_sampling_latent(log_p_0_sum, log_p_1_sum, log_likelihood_sum, bs):
 #     print(f"log_p_1_0_sum: {log_p_1_0_sum}")
 #     return remaining_0, remaining_1
 
+def create_mixture_from_audio_files(path_audio_1, path_audio_2, raw_to_tokens, sample_tokens,
+                                    vqvae, save_path, sample_rate, alpha, device='cuda', shift=0.):
+    m1, _ = torchaudio.load(path_audio_1) #deve essere di dimensioni (1, length) es (1, 5060608)
+    m2, _ = torchaudio.load(path_audio_2)
+    shift = int(shift * sample_rate)
+    assert sample_tokens * raw_to_tokens <= min(m1.shape[-1], m2.shape[-1]), "Sources must be longer than sample_tokens"
+    minin = sample_tokens * raw_to_tokens
+    m1_real    = m1[:, shift:shift+minin]
+    m2_real    = m2[:, shift:shift+minin]
+    mix        = alpha[0]*m1_real + alpha[1]*m2_real
+    torchaudio.save(f'{save_path}/real_mix.wav', mix.cpu().squeeze(-1), sample_rate=sample_rate)
+    torchaudio.save(f'{save_path}/real_m1.wav',  m1_real.cpu().squeeze(-1), sample_rate=sample_rate)
+    torchaudio.save(f'{save_path}/real_m2.wav',  m2_real.cpu().squeeze(-1), sample_rate=sample_rate)
+
+    z_m1 = vqvae.encode(m1_real.unsqueeze(-1).to(device), start_level=2, bs_chunks=1)[0]
+    z_m2 = vqvae.encode(m2_real.unsqueeze(-1).to(device), start_level=2, bs_chunks=1)[0]
+    z_mixture = vqvae.encode(mix.unsqueeze(-1).to(device), start_level=2, bs_chunks=1)[0]
+    latent_mix = vqvae.bottleneck.decode([z_mixture]*3)[-1]
+    mix = vqvae.decode([z_mixture], start_level=2, bs_chunks=1).squeeze(-1)  # 1, 8192*128
+    m1 = vqvae.decode([z_m1], start_level=2, bs_chunks=1).squeeze(-1)  # 1, 8192*128
+    m2 = vqvae.decode([z_m2], start_level=2, bs_chunks=1).squeeze(-1)  # 1, 8192*128
+    if not os.path.exists(f'{save_path}/'):
+        os.makedirs(f'{save_path}/')
+    torchaudio.save(f'{save_path}/mix.wav', mix.cpu().squeeze(-1), sample_rate=sample_rate)
+    torchaudio.save(f'{save_path}/m1.wav', m1.cpu().squeeze(-1), sample_rate=sample_rate)
+    torchaudio.save(f'{save_path}/m2.wav', m2.cpu().squeeze(-1), sample_rate=sample_rate)
+    return mix, latent_mix, z_mixture, m1, m2, m1_real, m2_real
+
+
+def make_models(vqvae_path, priors_list, sample_length, downs_t, sample_rate,
+                levels=3, level=2, fp16=True, device='cuda'):
+    # construct openai vqvae and priors
+    vqvae = make_vqvae(setup_hparams('vqvae', dict(sample_length=sample_length, downs_t=downs_t, sr=sample_rate,
+                                                   restore_vqvae=vqvae_path)), device)
+    prior_path_0 = priors_list[0]
+    prior_path_1 = priors_list[1]
+
+    prior_0 = make_prior(setup_hparams('small_prior', dict(levels=levels, level=level, labels=None,
+                                                           restore_prior=prior_path_0, c_res=1, fp16_params=fp16,
+                                                           n_ctx=8192)), vqvae, device)
+    prior_1 = make_prior(setup_hparams('small_prior', dict(levels=levels, level=level, labels=None,
+                                                           restore_prior=prior_path_1, c_res=1, fp16_params=fp16,
+                                                           n_ctx=8192)), vqvae, device)
+    priors = [prior_0, prior_1]
+    return vqvae, priors
 
 def separate(args):
-    rank, local_rank, device = setup_dist_from_mpi(port=29529)
-    args.sample_length = args.raw_to_tokens * args.sample_tokens
+    rank, local_rank, device = setup_dist_from_mpi(port=29531)
+    args.sample_length = args.raw_to_tokens * args.l_bins #sample_tokens
     args.fp16 = True
     assert args.alpha[0] + args.alpha[1] == 1.
 
@@ -794,7 +793,7 @@ if __name__ == '__main__':
     parser.add_argument('--chunk_size', type=int, help='Batch size chunk size', default=32)
     parser.add_argument('--window_mode', type=str, help='Local window type for time domain inference',
                         default='constant', choices=['constant', 'increment'])
-    parser.add_argument('--downs_t', type=int, nargs='+', help='Downsampling factors', default=[2, 2, 2])
+    parser.add_argument('--downs_t', type=int, nargs='+', help='Downsampling factors', default=(2, 2, 2))
     parser.add_argument('--context', type=int, help='Time domain local context', default=50)
     parser.add_argument('--top_k_posterior', type=int, help="Filter top-k over the posterior (0 = don't filter)",
                         default=0)
