@@ -7,8 +7,8 @@ Code for "Unsupervised Source Separation via Bayesian inference in the latent do
 
 |     |  GT Compressed  | Separated |
 | ----------- | ----------- | ----------- |
-| Drums      | [GT Compressed Drums ](/samples/real_bass.wav)       | [Separated Drums](/samples/rec_drums.wav)       |
-| Bass   | [GT Compressed Bass](/samples/real_drums.wav)        | [Separated Bass](/samples/rec_bass.wav)        |
+| Drums      | [GT Compressed Drums ](/samples/real_drums.wav)       | [Separated Drums](/samples/rec_drums.wav)       |
+| Bass   | [GT Compressed Bass](/samples/real_bass.wav)        | [Separated Bass](/samples/rec_bass.wav)        |
 | Mix   | [GT Compressed Mix](/samples/real_mix.wav)        | [Separated Mix](/samples/rec_mix.wav)        |
 
 The separation is performed on a x64 compressed latent domain. The results can be upsampled via Jukebox upsamplers in
