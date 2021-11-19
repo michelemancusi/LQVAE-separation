@@ -85,7 +85,7 @@ validation split inside `data/bass/validation` and `data/drums/validation`.
 
 - [ ] cleaner code
 - [ ] training of upsamplers for increasing the quality of the separations
-- [ ] better rejection sampling method (maybe use verifiers as in https://arxiv.org/abs/2110.14168 or ?)
+- [ ] better rejection sampling method (maybe use verifiers as in https://arxiv.org/abs/2110.14168)
 
 # Citations
 If you find the code useful for your research, please consider citing
