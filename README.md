@@ -95,7 +95,6 @@ validation split inside `data/bass/validation` and `data/drums/validation`.
 
 # Future work
 
-- [ ] cleaner code
 - [ ] training of upsamplers for increasing the quality of the separations
 - [ ] better rejection sampling method (maybe use verifiers as in https://arxiv.org/abs/2110.14168)
 
