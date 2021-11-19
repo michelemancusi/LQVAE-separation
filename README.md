@@ -23,7 +23,7 @@ pip install -e .
 
 # Separation with checkpoints
 
-- Call the following in order to perform `bs` separations of 3 seconds starting from second `shift` of the mixture created with the sources in `path_1` and `path_2`. The sources must be sampled at 22kHz.
+- Call the following in order to perform `bs` separations of 3 seconds starting from second `shift` of the mixture created with the sources in `path_1` and `path_2`. The sources must be WAV files sampled at 22kHz.
   ```
   PYTHONPATH=.. python bayesian_inference.py --shift=shift --path_1=path_1 --path_2=path_2 --bs=bs
   ```
