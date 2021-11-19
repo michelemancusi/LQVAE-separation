@@ -1,7 +1,7 @@
 # LQVAE-separation
 Code for "Unsupervised Source Separation via Bayesian inference in the latent domain"
 
-[Paper](https://arxiv.org/abs/2110.05313) 
+[Paper](https://arxiv.org/abs/2110.05313)
 
 # Install
 
@@ -50,11 +50,12 @@ PYTHONPATH=. mpiexec -n 1 python jukebox/train.py --hps=vqvae --sample_length=13
 PYTHONPATH=. mpiexec -n 1 python jukebox/train.py --hps=vqvae,small_prior,all_fp16,cpu_ema --name=pior_source
  --audio_files_dir=data/source/train --test_audio_files_dir=data/source/test --labels=False --train --test --aug_shift
   --aug_blend --prior --levels=3 --level=2 --weight_decay=0.01 --save_iters=1000 --min_duration=24 --sample_length=1048576 
-  -bs=16 --n_ctx=8192 --sample=True --sample_iters=1000
+  --bs=16 --n_ctx=8192 --sample=True --sample_iters=1000 --restore_vqvae=logs/lq_vae/checkpoint_lq_vae.pth.tar
 ```
 - Here the data of the source is located in `data/source/train` and `data/source/test` and we assume
 the LQ-VAE has 3 levels (topmost level = 2).
 - The Transformer model is defined by the parameters of `small_prior` in `hparams.py` and uses a context of `n_ctx=8192` codes.
+- The checkpoint path of the LQ-VAE trained in the previous step must be passed to `--restore_vqvae`
 - Checkpoints are save in `logs/pior_source` (`pior_source` is the `name` parameter).
 
 ## Codebook sums
@@ -79,6 +80,12 @@ PYTHONPATH=.. python codebook_precalc.py --save_path=checkpoints/codebook_sum_pr
 
 - In order to evaluate the pre-trained checkpoints, run `bayesian_test.py` after you have put the full `Slakh` drums and bass
 validation split inside `data/bass/validation` and `data/drums/validation`.
+
+# Future work
+
+- [ ] cleaner code
+- [ ] training of upsamplers for increasing the quality of the separations
+- [ ] better rejection sampling method (maybe use verifiers as in https://arxiv.org/abs/2110.14168 or ?)
 
 # Citations
 If you find the code useful for your research, please consider citing

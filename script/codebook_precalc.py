@@ -32,7 +32,7 @@ def compute_sums(args):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Bayesian inference with LQ-VAE')
+    parser = argparse.ArgumentParser(description='Codebook sum pre-computation')
 
     parser.add_argument('--save_path', type=str, help='Pre-computed sum codebook save path',
                         default='checkpoints/codebook_sum_precalc.pt')
