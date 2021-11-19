@@ -84,9 +84,9 @@ PYTHONPATH=.. python codebook_precalc.py --save_path=checkpoints/codebook_sum_pr
 - Trained checkpoints can be given to `bayesian_inference.py` as following:
   ```
   PYTHONPATH=.. python bayesian_inference.py --shift=shift --path_1=path_1 --path_2=path_2 --bs=bs --restore_vqvae=checkpoints/checkpoint_step_60001_latent.pth.tar
-  --restore_priors=['checkpoints/checkpoint_drums_22050_latent_78_19k.pth.tar', 'checkpoints/checkpoint_latest.pth.tar'] --sum_codebook=checkpoints/codebook_precalc_22050_latent.pt
+  --restore_priors 'checkpoints/checkpoint_drums_22050_latent_78_19k.pth.tar' checkpoints/checkpoint_latest.pth.tar' --sum_codebook=checkpoints/codebook_precalc_22050_latent.pt
   ```
-- `restore_priors` is a 2-list containing the checkpoint paths to the first and second prior.
+- `restore_priors` accepts two paths to the first and second prior checkpoints.
 
 # Evaluation
 
