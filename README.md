@@ -29,6 +29,7 @@ conda install pytorch==1.7.1 torchvision==0.8.2 torchaudio==0.7.2 cudatoolkit=11
 pip install -r requirements.txt
 pip install -e .
 
+# for training
 conda install av=7.0.01 -c conda-forge 
 pip install ./tensorboardX
 ```
