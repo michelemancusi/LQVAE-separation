@@ -1,9 +1,21 @@
-# LQVAE-separation
-Code for "Unsupervised Source Separation via Bayesian inference in the latent domain"
+<div align="center">    
+ 
+# LQVAE-separation   
 
-[Paper](https://arxiv.org/abs/2110.05313)
+[![Paper](https://img.shields.io/badge/Paper-LQ--VAE-brightgreen.svg)](https://arxiv.org/abs/2110.05313)
+  
+</div>
+
+
+Code for [**"Unsupervised Source Separation via Bayesian inference in the latent domain"** - Link](https://arxiv.org/abs/2110.05313)
 
 # Samples
+
+
+
+
+
+
 
 |     |  GT Compressed  | Separated |
 | ----------- | ----------- | ----------- |
@@ -13,6 +25,45 @@ Code for "Unsupervised Source Separation via Bayesian inference in the latent do
 
 The separation is performed on a x64 compressed latent domain. The results can be upsampled via Jukebox upsamplers in
 order to increment perceptive quality (WIP). 
+
+<!--
+
+https://user-images.githubusercontent.com/7619886/151543882-b56676c5-c0cf-4f58-baa8-2753a5228c79.mp4
+
+
+
+https://user-images.githubusercontent.com/7619886/151543891-f3d27d09-d9db-4930-a5e5-e0f1b5fbf8e3.mp4
+
+
+
+https://user-images.githubusercontent.com/7619886/151543904-8457f68b-4d41-49f9-a26c-5591cd16a53f.mp4
+
+
+
+
+https://user-images.githubusercontent.com/7619886/151543913-61d2d0a0-1329-41d9-9761-e41ff00625ec.mp4
+
+
+
+https://user-images.githubusercontent.com/7619886/151543926-3dea69f2-21a4-4908-9faf-f2c382bfc59c.mp4
+
+
+
+https://user-images.githubusercontent.com/7619886/151543935-0d4a028b-58d8-41db-8cf7-69d9b05d14bc.mp4
+
+-->
+
+
+https://user-images.githubusercontent.com/7619886/151544181-482e687d-538a-4886-b690-999dd4d64c42.mp4
+
+
+https://user-images.githubusercontent.com/7619886/151544196-d43b0341-4214-4083-8b52-46574c02d800.mp4
+
+
+https://user-images.githubusercontent.com/7619886/151544205-442793a6-b886-4c66-bc1a-6108abe260a7.mp4
+
+
+
 
 
 # Install
