@@ -76,7 +76,8 @@ conda activate lqvae-separation
 sudo apt install mpich 
 conda install mpi4py==3.0.3
 pip install ffmpeg-python==0.2.0
-conda install pytorch==1.7.1 torchvision==0.8.2 torchaudio==0.7.2 cudatoolkit=11.0 -c pytorch
+conda install pytorch==1.7.1 torchvision==0.8.2 torchaudio==0.7.2 cudatoolkit=11.0 -c pytorch 
+(if problems try pip install torch==1.7.1 torchvision==0.8.2 torchaudio==0.7.2)
 pip install -r requirements.txt
 pip install -e .
 
