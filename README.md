@@ -81,7 +81,7 @@ pip install -r requirements.txt
 pip install -e .
 
 # for training
-conda install av=7.0.01 -c conda-forge 
+pip install av=7.0.1
 pip install ./tensorboardX
 ```
 # Checkpoints
