@@ -383,8 +383,8 @@ def sample(xs_0, xs_1, vqvae, priors, m, n_samples, sample_tokens, sigma=0.01, c
 
 if __name__ == '__main__':
 
-    priors_list = ['../../../logs/SLAKH_DRUMS_22050_latent/checkpoint_drums_22050_latent_78_19k.pth.tar',
-                   '../../../logs/SLAKH_BASS_22050_latent/checkpoint_latest.pth.tar']
+    priors_list = ['checkpoints/checkpoint_drums_22050_latent_78_19k.pth.tar',
+                   'checkpoints/checkpoint_latest.pth.tar']
 
 
     raw_to_tokens = 64
@@ -408,12 +408,12 @@ if __name__ == '__main__':
 
 
 
-    bass_audio_files_dir=  '../../../data/bass/validation'
-    drums_audio_files_dir= '../../../data/drums/validation'
+    bass_audio_files_dir=  'data/bass/validation'
+    drums_audio_files_dir= 'data/drums/validation'
     collate_fn = lambda batch: t.stack([t.from_numpy(b) for b in batch], 0)
 
     aug_blend = False
-    restore_vqvae = '../../../logs/checkpoint_step_60001_latent.pth.tar'
+    restore_vqvae = 'checkpoints/checkpoint_step_60001_latent.pth.tar'
     #vqvae = make_vqvae(setup_hparams('vqvae', dict(sample_length=sample_length, downs_t=downs_t, sr=sample_rate, commit=commit, restore_vqvae=restore_vqvae)), device)
     vqvae, priors = make_models(restore_vqvae, priors_list, sample_length, downs_t, sample_rate,
                                 levels=levels, level=level, fp16=fp16, device=device)
@@ -500,7 +500,7 @@ if __name__ == '__main__':
                     m2 = m2.squeeze(-1)
 
                     if (torch.linalg.norm(m1)/m1.shape[-1]) < SILENCE_THRESHOLD or (torch.linalg.norm(m2)/m2.shape[-1]) < SILENCE_THRESHOLD:
-                        print("traccia skippata")
+                        print("skip track")
                         continue
 
 

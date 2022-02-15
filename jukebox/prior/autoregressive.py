@@ -46,8 +46,8 @@ class PositionEmbedding(nn.Module):
         return pos_emb
 
 class ConditionalAutoregressive2D(nn.Module):
-    def __init__(self, input_shape, bins, bottleneck=None, emb_width=0, noise_schedule=None,
-                 width=128, depth=2, heads=1,
+    def __init__(self, input_shape, bins, bottleneck=None, emb_width=0,
+                 width=128, depth=2, heads=1, level=None,
                  attn_dropout=0.0, resid_dropout=0.0, emb_dropout=0.0, mask=True,
                  zero_out=False, init_scale=1.0, res_scale=False, pos_init=False,
                  m_attn=0.25, m_mlp=1,
@@ -61,12 +61,11 @@ class ConditionalAutoregressive2D(nn.Module):
         self.bins = bins
         self.width = width
         self.depth = depth
+        self.level = level
         self.bottleneck = bottleneck
         self.emb_width = emb_width
-        self.noise_schedule = noise_schedule
-        self.x_embs = nn.Embedding(bins, width)
+        # self.x_embs = nn.Embedding(bins, width)
         self.x_embs = nn.Linear(emb_width, width, bias=False)
-        self.noise_emb = nn.Linear(1, width)
         nn.init.normal_(self.x_embs.weight, std=0.02 * init_scale)
         self.x_emb_dropout = nn.Dropout(emb_dropout)
         self.y_cond = y_cond
@@ -140,24 +139,8 @@ class ConditionalAutoregressive2D(nn.Module):
             assert x_cond is None
             x_cond = t.zeros((N, 1, self.width), device=x.device, dtype=t.float)
 
-        # Target
-        #with t.no_grad():
-        #    # multinomial noise
-        #    # -----------------
-        #    #beta = t.tensor([0.1, 0.1]).view(-1, 1).float().cuda() # t.tensor([np.random.choice(self.noise_schedule) for _ in range(x.shape[0])]).view(-1, 1).\
-        #          # float().cuda()  # N
-        #    #r = t.rand((N, D)).cuda()
-        #    #cond = r <= beta
-        #    #x[cond] = t.randint(2048, (x[cond].shape[0],)).cuda()
-        #    # gaussian noise
-        #    # --------------
-        #     x = self.bottleneck.decode([x], start_level=2)[0]  # N, 64, 8192
-        #     sigma = t.tensor([18.75]*N).view(-1, 1).float().cuda()
-        #     # t.tensor([np.random.choice(self.noise_schedule) for _ in range(x.shape[0])]).float().cuda()  # N
-        #     x = x + t.randn_like(x).float() * sigma.view(-1, 1, 1)  # N, 64, 8192
-        #     x = self.bottleneck.encode([x]*3)[-1]  # N, 8192
         x_t = x
-        x = self.bottleneck.decode([x], start_level=2)[0]  # N, 64, 8192
+        x = self.bottleneck.decode([x], start_level=self.level)[0]  # N, 64, 8192
 
         x = x.permute(0, 2, 1)
         x = self.x_embs(x)  # X emb
@@ -166,7 +149,7 @@ class ConditionalAutoregressive2D(nn.Module):
         if self.y_cond:
             x[:,0] = y_cond.view(N, self.width)
         else:
-            x[:,0] =  self.start_token # self.noise_emb(sigma.view(-1, 1)), self.noise_emb(beta)
+            x[:,0] =  self.start_token
 
         x = self.x_emb_dropout(x) + self.pos_emb_dropout(self.pos_emb()) + x_cond # Pos emb and dropout
 
@@ -208,17 +191,11 @@ class ConditionalAutoregressive2D(nn.Module):
             else:
                 x[:, 0] = self.start_token
 
-                # sigma = [np.random.choice(self.noise_schedule) for _ in range(N)]
-                # print(f"Sampling {sigma = }")
-                # beta = t.tensor([np.random.choice(self.noise_schedule) for _ in range(x.shape[0])]).view(-1, 1). \
-                #    float().cuda()
-                #print(f"Sampling {beta = }")
-                #x[:, 0] = self.noise_emb(beta)  # self.noise_emb(t.tensor(sigma).float().cuda().view(-1, 1))  # self.noise_emb# self.start_token
         else:
             assert isinstance(x, t.cuda.LongTensor)
             assert (0 <= x).all() and (x < self.bins).all()
             with t.no_grad():
-               x = self.bottleneck.decode([x], start_level=2)[0]
+               x = self.bottleneck.decode([x], start_level=self.level)[0]
             x = x.permute(0, 2, 1)
             x = self.x_embs(x)
         assert x.shape == (n_samples, 1, self.width)
