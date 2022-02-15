@@ -28,7 +28,7 @@ def sample_level(vqvae, priors, m, n_samples, n_ctx, hop_length, sample_tokens, 
     xs_0 = torch.zeros(n_samples, 0, dtype=torch.long, device=device)
     xs_1 = torch.zeros(n_samples, 0, dtype=torch.long, device=device)
 
-    if sample_tokens >= n_ctx:
+    if sample_tokens > n_ctx:
         for start in get_starts(sample_tokens, n_ctx, hop_length):
             xs_0, xs_1, log_p_0_sum, log_p_1_sum, log_likelihood_sum = sample_single_window(xs_0, xs_1, vqvae, priors, m, n_samples, n_ctx, start=start, sigma=sigma,
                                               context=context, fp16=fp16, temp=temp, alpha=alpha, top_k=top_k,
