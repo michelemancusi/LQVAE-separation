@@ -688,8 +688,9 @@ def rejection_sampling_latent(log_p_0_sum, log_p_1_sum, log_likelihood_sum, bs):
 
 def create_mixture_from_audio_files(path_audio_1, path_audio_2, raw_to_tokens, sample_tokens,
                                     vqvae, save_path, sample_rate, alpha, device='cuda', shift=0.):
-    m1, _ = torchaudio.load(path_audio_1) #deve essere di dimensioni (1, length) es (1, 5060608)
-    m2, _ = torchaudio.load(path_audio_2)
+    #sqrt(2) è grazie a Giorgio che si è accordo che durante il training le tracce vengono caricate con una funzione load_audio di jukebox ch normalizza con sqrt(2) le tracce audio
+    m1, _ = torchaudio.load(path_audio_1)/np.sqrt(2) #deve essere di dimensioni (1, length) es (1, 5060608)
+    m2, _ = torchaudio.load(path_audio_2)/np.sqrt(2)
     shift = int(shift * sample_rate)
     assert sample_tokens * raw_to_tokens <= min(m1.shape[-1], m2.shape[-1]), "Sources must be longer than sample_tokens"
     minin = sample_tokens * raw_to_tokens
